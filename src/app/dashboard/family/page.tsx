@@ -2,21 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { getInitials, getRelationLabel, getAgeFromDOB, formatDate } from '@/lib/utils'
+import { getInitials, getRelationLabel, getAgeFromDOB } from '@/lib/utils'
 import type { FamilyMember } from '@/types'
-import { Users, Plus, X, Loader2, Pencil, Trash2, Heart, Salad, ChevronDown, ChevronUp } from 'lucide-react'
+import { Users, Plus, X, Loader2, Pencil, Trash2, Heart, Salad, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
 
 const RELATIONS = ['self', 'spouse', 'child', 'parent', 'other']
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 const HEALTH_GOALS = [
-  'Weight Loss',
-  'Weight Gain',
-  'Muscle Building',
-  'Diabetes Management',
-  'Heart Health',
-  'General Wellness',
-  'Boost Immunity',
-  'Manage Hypertension',
+  'Weight Loss', 'Weight Gain', 'Muscle Building',
+  'Diabetes Management', 'Heart Health', 'General Wellness',
+  'Boost Immunity', 'Manage Hypertension',
 ]
 
 const RELATION_COLORS: Record<string, string> = {
@@ -38,6 +33,7 @@ type DietDay = {
 }
 
 type DietChart = {
+  id?: string
   goal: string
   memberName: string
   summary: string
@@ -52,10 +48,12 @@ export default function FamilyPage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null)
-  const [selectedGoal, setSelectedGoal] = useState('')
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([])
   const [generatingDiet, setGeneratingDiet] = useState(false)
   const [dietChart, setDietChart] = useState<DietChart | null>(null)
+  const [loadingChart, setLoadingChart] = useState(false)
   const [expandedDay, setExpandedDay] = useState<string | null>('Monday')
+  const [showGoalSelector, setShowGoalSelector] = useState(false)
   const supabase = createClient()
 
   const emptyForm = { name: '', relation: 'self', date_of_birth: '', blood_group: '', allergies: '', chronic_conditions: '' }
@@ -70,7 +68,46 @@ export default function FamilyPage() {
     setLoading(false)
   }
 
+  async function fetchDietChart(memberId: string) {
+    setLoadingChart(true)
+    const { data } = await supabase
+      .from('diet_charts')
+      .select('*')
+      .eq('member_id', memberId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (data) {
+      setDietChart({
+        id: data.id,
+        goal: data.goal,
+        memberName: data.member_id,
+        summary: data.summary,
+        weeklyPlan: data.weekly_plan,
+      })
+      setExpandedDay('Monday')
+    } else {
+      setDietChart(null)
+    }
+    setLoadingChart(false)
+  }
+
   useEffect(() => { fetchMembers() }, [])
+
+  async function handleSelectMember(m: FamilyMember) {
+    setSelectedMember(m)
+    setDietChart(null)
+    setSelectedGoals([])
+    setShowGoalSelector(false)
+    await fetchDietChart(m.id)
+  }
+
+  function toggleGoal(goal: string) {
+    setSelectedGoals(prev =>
+      prev.includes(goal) ? prev.filter(g => g !== goal) : [...prev, goal]
+    )
+  }
 
   function openAdd() { setEditing(null); setForm(emptyForm); setShowModal(true) }
   function openEdit(m: FamilyMember) {
@@ -98,9 +135,8 @@ export default function FamilyPage() {
   }
 
   async function generateDietChart() {
-    if (!selectedMember || !selectedGoal) return
+    if (!selectedMember || selectedGoals.length === 0) return
     setGeneratingDiet(true)
-    setDietChart(null)
 
     const { data: records } = await supabase
       .from('health_records')
@@ -109,13 +145,14 @@ export default function FamilyPage() {
       .order('record_date', { ascending: false })
       .limit(5)
 
+    const combinedGoal = selectedGoals.join(' + ')
     const memberContext = `
 Name: ${selectedMember.name}
 Age: ${selectedMember.date_of_birth ? getAgeFromDOB(selectedMember.date_of_birth) + ' years' : 'Unknown'}
 Blood Group: ${selectedMember.blood_group ?? 'Unknown'}
 Allergies: ${selectedMember.allergies ?? 'None'}
 Chronic Conditions: ${selectedMember.chronic_conditions ?? 'None'}
-Health Goal: ${selectedGoal}
+Health Goals: ${combinedGoal}
 Recent Health Records: ${records && records.length > 0 ? records.map(r => `${r.record_type}: ${r.title} — ${r.notes ?? ''}`).join('; ') : 'None'}
 `
 
@@ -123,11 +160,42 @@ Recent Health Records: ${records && records.length > 0 ? records.map(r => `${r.r
       const res = await fetch('/api/diet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberContext, goal: selectedGoal, memberName: selectedMember.name }),
+        body: JSON.stringify({ memberContext, goal: combinedGoal, memberName: selectedMember.name }),
       })
       const data = await res.json()
-      setDietChart(data)
+
+      // Save to Supabase
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        // Upsert — update if exists, insert if not
+        const existing = await supabase
+          .from('diet_charts')
+          .select('id')
+          .eq('member_id', selectedMember.id)
+          .single()
+
+        if (existing.data?.id) {
+          await supabase.from('diet_charts').update({
+            goal: combinedGoal,
+            summary: data.summary,
+            weekly_plan: data.weeklyPlan,
+            updated_at: new Date().toISOString(),
+          }).eq('id', existing.data.id)
+        } else {
+          await supabase.from('diet_charts').insert({
+            user_id: user.id,
+            member_id: selectedMember.id,
+            goal: combinedGoal,
+            summary: data.summary,
+            weekly_plan: data.weeklyPlan,
+          })
+        }
+      }
+
+      setDietChart({ ...data, weeklyPlan: data.weeklyPlan })
       setExpandedDay('Monday')
+      setShowGoalSelector(false)
+      setSelectedGoals([])
     } catch {
       alert('Failed to generate diet chart. Please try again.')
     } finally {
@@ -162,7 +230,7 @@ Recent Health Records: ${records && records.length > 0 ? records.map(r => `${r.r
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {members.map((m) => (
               <div key={m.id}
-                onClick={() => { setSelectedMember(m); setDietChart(null); setSelectedGoal('') }}
+                onClick={() => handleSelectMember(m)}
                 className={`bg-white rounded-2xl border p-6 hover:shadow-sm transition-all cursor-pointer ${selectedMember?.id === m.id ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}>
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -193,83 +261,111 @@ Recent Health Records: ${records && records.length > 0 ? records.map(r => `${r.r
             ))}
           </div>
 
-          {/* Diet chart generator */}
+          {/* Diet chart section */}
           {selectedMember && (
             <div className="bg-white rounded-2xl border border-border p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center"><Salad className="w-5 h-5 text-emerald-600" /></div>
-                <div>
-                  <h2 className="font-semibold">AI Diet Chart for {selectedMember.name}</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Personalised based on health records, conditions & allergies</p>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center"><Salad className="w-5 h-5 text-emerald-600" /></div>
+                  <div>
+                    <h2 className="font-semibold">AI Diet Chart for {selectedMember.name}</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Personalised based on health records, conditions & allergies</p>
+                  </div>
                 </div>
+                {dietChart && !showGoalSelector && (
+                  <button onClick={() => setShowGoalSelector(true)}
+                    className="btn-secondary flex items-center gap-2 text-xs">
+                    <RefreshCw className="w-3.5 h-3.5" /> Generate New Chart
+                  </button>
+                )}
               </div>
 
-              {/* Goal selector */}
-              {!dietChart && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Select health goal *</label>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {HEALTH_GOALS.map(goal => (
-                        <button key={goal} onClick={() => setSelectedGoal(goal)}
-                          className={`text-sm rounded-xl px-3 py-2.5 border text-left transition-all ${selectedGoal === goal ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border hover:border-primary/50 hover:bg-accent'}`}>
-                          {goal}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <button onClick={generateDietChart} disabled={!selectedGoal || generatingDiet}
-                    className="btn-primary flex items-center gap-2">
-                    {generatingDiet ? <><Loader2 className="w-4 h-4 animate-spin" /> Analysing health records & generating...</> : <><Salad className="w-4 h-4" /> Generate 7-Day Diet Chart</>}
-                  </button>
+              {loadingChart ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm text-muted-foreground">Loading saved chart...</span>
                 </div>
-              )}
-
-              {/* Diet chart display */}
-              {dietChart && (
-                <div className="space-y-4">
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold text-emerald-800">Goal: {dietChart.goal}</span>
-                      <button onClick={() => { setDietChart(null); setSelectedGoal('') }}
-                        className="text-xs text-emerald-600 hover:underline">Regenerate</button>
-                    </div>
-                    <p className="text-sm text-emerald-700 leading-relaxed">{dietChart.summary}</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    {dietChart.weeklyPlan.map((day) => (
-                      <div key={day.day} className="border border-border rounded-xl overflow-hidden">
-                        <button onClick={() => setExpandedDay(expandedDay === day.day ? null : day.day)}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors">
-                          <span className="font-medium text-sm">{day.day}</span>
-                          {expandedDay === day.day ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+              ) : (
+                <>
+                  {/* Goal selector — show when no chart OR when regenerating */}
+                  {(!dietChart || showGoalSelector) && (
+                    <div className="space-y-4 mb-6">
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">
+                          Select health goal(s) *
+                          <span className="text-xs text-muted-foreground ml-2 font-normal">You can select multiple</span>
+                        </label>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                          {HEALTH_GOALS.map(goal => (
+                            <button key={goal} onClick={() => toggleGoal(goal)}
+                              className={`text-sm rounded-xl px-3 py-2.5 border text-left transition-all ${selectedGoals.includes(goal) ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border hover:border-primary/50 hover:bg-accent'}`}>
+                              {selectedGoals.includes(goal) && '✓ '}{goal}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex gap-3">
+                        <button onClick={generateDietChart} disabled={selectedGoals.length === 0 || generatingDiet}
+                          className="btn-primary flex items-center gap-2">
+                          {generatingDiet
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Analysing & generating...</>
+                            : <><Salad className="w-4 h-4" /> Generate {selectedGoals.length > 0 ? `(${selectedGoals.length} goal${selectedGoals.length > 1 ? 's' : ''})` : ''} 7-Day Diet Chart</>}
                         </button>
-                        {expandedDay === day.day && (
-                          <div className="p-4 space-y-3">
-                            {[
-                              { label: '🌅 Breakfast', value: day.breakfast },
-                              { label: '🍎 Mid Morning', value: day.midMorning },
-                              { label: '🍱 Lunch', value: day.lunch },
-                              { label: '☕ Evening Snack', value: day.eveningSnack },
-                              { label: '🌙 Dinner', value: day.dinner },
-                            ].map(({ label, value }) => (
-                              <div key={label} className="flex gap-3">
-                                <span className="text-sm font-medium w-32 shrink-0 text-muted-foreground">{label}</span>
-                                <span className="text-sm">{value}</span>
-                              </div>
-                            ))}
-                            {day.notes && (
-                              <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 text-xs text-amber-800 mt-2">
-                                💡 {day.notes}
+                        {showGoalSelector && (
+                          <button onClick={() => { setShowGoalSelector(false); setSelectedGoals([]) }}
+                            className="btn-secondary">Cancel</button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Existing chart display */}
+                  {dietChart && !showGoalSelector && (
+                    <div className="space-y-4">
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                        <div className="text-sm font-semibold text-emerald-800 mb-1">
+                          🎯 Goal: {dietChart.goal}
+                        </div>
+                        <p className="text-sm text-emerald-700 leading-relaxed">{dietChart.summary}</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        {dietChart.weeklyPlan.map((day) => (
+                          <div key={day.day} className="border border-border rounded-xl overflow-hidden">
+                            <button onClick={() => setExpandedDay(expandedDay === day.day ? null : day.day)}
+                              className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors">
+                              <span className="font-medium text-sm">{day.day}</span>
+                              {expandedDay === day.day
+                                ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                                : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                            </button>
+                            {expandedDay === day.day && (
+                              <div className="p-4 space-y-3">
+                                {[
+                                  { label: '🌅 Breakfast', value: day.breakfast },
+                                  { label: '🍎 Mid Morning', value: day.midMorning },
+                                  { label: '🍱 Lunch', value: day.lunch },
+                                  { label: '☕ Evening Snack', value: day.eveningSnack },
+                                  { label: '🌙 Dinner', value: day.dinner },
+                                ].map(({ label, value }) => (
+                                  <div key={label} className="flex gap-3">
+                                    <span className="text-sm font-medium w-32 shrink-0 text-muted-foreground">{label}</span>
+                                    <span className="text-sm">{value}</span>
+                                  </div>
+                                ))}
+                                {day.notes && (
+                                  <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 text-xs text-amber-800 mt-2">
+                                    💡 {day.notes}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
-                        )}
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

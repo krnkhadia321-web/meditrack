@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  --font-sora: "Sora", system-ui, sans-serif;
+  --font-jetbrains: "JetBrains Mono", monospace;
+
+  --background: 150 20% 98%;
+  --foreground: 160 25% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 160 25% 10%;
+  --border: 160 15% 88%;
+  --input: 160 15% 88%;
+  --ring: 162 72% 40%;
+  --primary: 162 72% 38%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 160 15% 94%;
+  --secondary-foreground: 160 25% 20%;
+  --muted: 160 12% 94%;
+  --muted-foreground: 160 12% 46%;
+  --accent: 162 60% 94%;
+  --accent-foreground: 162 72% 28%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --radius: 0.75rem;
+
+  --sidebar-width: 260px;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sora);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  .sidebar {
+    @apply fixed left-0 top-0 h-full bg-white border-r border-border z-40;
+    width: var(--sidebar-width);
+  }
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium
+           text-muted-foreground hover:text-foreground hover:bg-accent
+           transition-all duration-150;
+  }
+  .sidebar-link.active {
+    @apply bg-primary/10 text-primary;
+  }
+  .stat-card {
+    @apply bg-white rounded-2xl border border-border p-6
+           hover:shadow-sm transition-shadow duration-200;
+  }
+  .btn-primary {
+    @apply bg-primary text-white rounded-xl px-5 py-2.5 text-sm font-medium
+           hover:bg-primary/90 transition-colors duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground rounded-xl px-5 py-2.5 text-sm font-medium
+           hover:bg-secondary/70 transition-colors duration-150;
+  }
+  .btn-ghost {
+    @apply text-muted-foreground rounded-xl px-4 py-2.5 text-sm font-medium
+           hover:bg-accent hover:text-foreground transition-colors duration-150;
+  }
+  .input-field {
+    @apply w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm
+           focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
+           placeholder:text-muted-foreground transition-all duration-150;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  .page-header {
+    @apply flex items-center justify-between mb-8;
+  }
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+  .page-subtitle {
+    @apply text-sm text-muted-foreground mt-0.5;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 99px;
+}
+
+@keyframes slide-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-in {
+  animation: slide-in-up 0.3s ease-out both;
+}
+.delay-100 {
+  animation-delay: 0.1s;
+}
+.delay-200 {
+  animation-delay: 0.2s;
+}
+.delay-300 {
+  animation-delay: 0.3s;
+}

@@ -268,7 +268,7 @@ Recent Health Records: ${records && records.length > 0 ? records.map(r => `${r.r
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center"><Salad className="w-5 h-5 text-emerald-600" /></div>
                   <div>
-                    <h2 className="font-semibold">AI Diet Chart for {selectedMember.name}</h2>
+                    <h2 className="font-semibold">Diet Chart for {selectedMember.name}</h2>
                     <p className="text-xs text-muted-foreground mt-0.5">Personalised based on health records, conditions & allergies</p>
                   </div>
                 </div>

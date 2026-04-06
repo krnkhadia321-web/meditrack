@@ -16,6 +16,7 @@ export type FamilyMember = {
   blood_group: string | null
   allergies: string | null
   chronic_conditions: string | null
+  annual_budget: number | null
   created_at: string
 }
 

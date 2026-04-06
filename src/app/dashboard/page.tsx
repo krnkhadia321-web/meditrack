@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { formatCurrency } from '@/lib/utils'
-import { TrendingDown, TrendingUp, Receipt, Users, Shield, AlertCircle } from 'lucide-react'
+import { TrendingDown, TrendingUp, Receipt, Users, Shield, AlertCircle,Target } from 'lucide-react'
 import SpendingChart from '@/components/dashboard/SpendingChart'
 import CategoryChart from '@/components/dashboard/CategoryChart'
 
@@ -19,7 +19,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase.from('expenses').select('*, expense_categories(*), family_members(name, relation)')
       .eq('user_id', user.id).order('expense_date', { ascending: false }).limit(200),
-    supabase.from('family_members').select('*').eq('user_id', user.id),
+    supabase.from('family_members').select('id, name, relation, annual_budget').eq('user_id', user.id),
     supabase.from('insurance_policies').select('*').eq('user_id', user.id).eq('is_active', true),
     supabase.from('profiles').select('*').eq('id', user.id).single(),
   ])
@@ -175,6 +175,71 @@ export default async function DashboardPage() {
           <CategoryChart data={categoryData} />
         </div>
       </div>
+
+      {/* Budget tracker */}
+{familyMembers && familyMembers.some((m: any) => m.annual_budget) && (
+  <div className="bg-white rounded-2xl border border-border p-6 mb-8">
+    <div className="flex items-center gap-3 mb-5">
+      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+        <Target className="w-4 h-4 text-primary" />
+      </div>
+      <div>
+        <h3 className="font-semibold text-sm">Annual health budgets</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Yearly spending vs target per member</p>
+      </div>
+    </div>
+    <div className="space-y-4">
+      {familyMembers
+        .filter((m: any) => m.annual_budget)
+        .map((member: any) => {
+          const memberExpenses = expenses?.filter(e => e.member_id === member.id) ?? []
+          const yearStart = new Date(now.getFullYear(), 0, 1)
+          const yearlySpend = memberExpenses
+            .filter(e => new Date(e.expense_date) >= yearStart)
+            .reduce((s: number, e: any) => s + Number(e.amount), 0)
+          const pct = Math.min(100, Math.round((yearlySpend / member.annual_budget) * 100))
+          const remaining = member.annual_budget - yearlySpend
+          const isOver = yearlySpend > member.annual_budget
+          const isWarning = pct >= 80 && !isOver
+
+          return (
+            <div key={member.id}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center text-white text-xs font-semibold">
+                    {member.name[0]}
+                  </div>
+                  <span className="text-sm font-medium">{member.name}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-semibold">
+                    {formatCurrency(yearlySpend)}
+                  </span>
+                  <span className="text-xs text-muted-foreground"> / {formatCurrency(member.annual_budget)}</span>
+                </div>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    isOver ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-primary'
+                  }`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between mt-1.5">
+                <span className="text-xs text-muted-foreground">{pct}% used</span>
+                <span className={`text-xs font-medium ${isOver ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                  {isOver
+                    ? `${formatCurrency(Math.abs(remaining))} over budget`
+                    : `${formatCurrency(remaining)} remaining`}
+                </span>
+              </div>
+            </div>
+          )
+        })}
+    </div>
+  </div>
+)}
 
       {/* Recent expenses */}
       <div className="bg-white rounded-2xl border border-border p-6">

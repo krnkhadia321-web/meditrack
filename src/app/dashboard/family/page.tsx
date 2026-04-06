@@ -56,7 +56,7 @@ export default function FamilyPage() {
   const [showGoalSelector, setShowGoalSelector] = useState(false)
   const supabase = createClient()
 
-  const emptyForm = { name: '', relation: 'self', date_of_birth: '', blood_group: '', allergies: '', chronic_conditions: '' }
+  const emptyForm = { name: '', relation: 'self', date_of_birth: '', blood_group: '', allergies: '', chronic_conditions: '', annual_budget: '' }
   const [form, setForm] = useState(emptyForm)
 
   async function fetchMembers() {
@@ -112,7 +112,7 @@ export default function FamilyPage() {
   function openAdd() { setEditing(null); setForm(emptyForm); setShowModal(true) }
   function openEdit(m: FamilyMember) {
     setEditing(m)
-    setForm({ name: m.name, relation: m.relation, date_of_birth: m.date_of_birth ?? '', blood_group: m.blood_group ?? '', allergies: m.allergies ?? '', chronic_conditions: m.chronic_conditions ?? '' })
+    setForm({ name: m.name, relation: m.relation, date_of_birth: m.date_of_birth ?? '', blood_group: m.blood_group ?? '', allergies: m.allergies ?? '', chronic_conditions: m.chronic_conditions ?? '', annual_budget: m.annual_budget ? String(m.annual_budget) : '', })
     setShowModal(true)
   }
 
@@ -121,7 +121,7 @@ export default function FamilyPage() {
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const payload = { name: form.name, relation: form.relation, date_of_birth: form.date_of_birth || null, blood_group: form.blood_group || null, allergies: form.allergies || null, chronic_conditions: form.chronic_conditions || null }
+    const payload = { name: form.name, relation: form.relation, date_of_birth: form.date_of_birth || null, blood_group: form.blood_group || null, allergies: form.allergies || null, annual_budget: form.annual_budget ? parseFloat(form.annual_budget) : null, }
     if (editing) { await supabase.from('family_members').update(payload).eq('id', editing.id) }
     else { await supabase.from('family_members').insert({ ...payload, user_id: user.id }) }
     setSaving(false); setShowModal(false); fetchMembers()
@@ -412,6 +412,13 @@ Recent Health Records: ${records && records.length > 0 ? records.map(r => `${r.r
                 <label className="text-sm font-medium mb-1.5 block">Chronic conditions</label>
                 <input value={form.chronic_conditions} onChange={e => setForm({ ...form, chronic_conditions: e.target.value })} placeholder="e.g. Diabetes, Hypertension" className="input-field" />
               </div>
+              <div>
+  <label className="text-sm font-medium mb-1.5 block">Annual health budget (₹)</label>
+  <input type="number" min="0" value={form.annual_budget}
+    onChange={e => setForm({ ...form, annual_budget: e.target.value })}
+    placeholder="e.g. 50000" className="input-field" />
+  <p className="text-xs text-muted-foreground mt-1">Set a yearly spending target for this member</p>
+</div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancel</button>
                 <button type="submit" disabled={saving} className="btn-primary flex-1 flex items-center justify-center gap-2">

@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { User, Download, Shield, Info, Loader2, CheckCircle2, Heart } from 'lucide-react'
+import { User, Download, Shield, Info, Loader2, CheckCircle2, Heart, Calculator } from 'lucide-react'
+import TaxCalculator from '@/components/dashboard/TaxCalculator'
 
 type Profile = {
   full_name: string
@@ -123,7 +124,23 @@ export default function SettingsPage() {
 
       <div className="space-y-6">
 
+        {/* Section 80D Calculator */}
+<div className="bg-white rounded-2xl border border-border p-6">
+  <div className="flex items-center gap-3 mb-4">
+    <div className="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center">
+      <Calculator className="w-4 h-4 text-amber-600" />
+    </div>
+    <div>
+      <h2 className="font-semibold text-sm">Section 80D Tax Deduction</h2>
+      <p className="text-xs text-muted-foreground">Auto-computed from your MediTrack data</p>
+    </div>
+  </div>
+
+  <TaxCalculator userId={userEmail} />
+</div>
+
         {/* Profile */}
+        
         <div className="bg-white rounded-2xl border border-border p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">

@@ -6,13 +6,14 @@ import { createClient } from '@/lib/supabase/client'
 import { cn, getInitials } from '@/lib/utils'
 import {
   LayoutDashboard, Users, Receipt, FileText,
-  Shield, Bot, LogOut, Heart, Settings,
+  Shield, Bot, LogOut, Heart, Settings, Pill
 } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard',           icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/dashboard/family',    icon: Users,           label: 'Family' },
   { href: '/dashboard/expenses',  icon: Receipt,         label: 'Expenses' },
+  { href: '/dashboard/medicines', icon: Pill, label: 'Medicines' },
   { href: '/dashboard/records',   icon: FileText,        label: 'Health Records' },
   { href: '/dashboard/insurance', icon: Shield,          label: 'Insurance' },
   { href: '/dashboard/assistant', icon: Bot, label: 'AI Assistant' },

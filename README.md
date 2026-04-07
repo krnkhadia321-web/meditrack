@@ -348,4 +348,4 @@ B2B corporate wellness dashboard
 📄 License
 MIT License — free to use, modify, and distribute.
 
-Built with ❤️ for Indian families · Powered by Next.js, Supabase, and Groq
+Built with ❤️ for Indian families · Powered by Next.js, Supabase, and Groq.

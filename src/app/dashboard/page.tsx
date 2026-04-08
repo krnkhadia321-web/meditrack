@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { formatCurrency } from '@/lib/utils'
-import { TrendingDown, TrendingUp, Receipt, Users, Shield, AlertCircle,Target } from 'lucide-react'
+import { TrendingDown, TrendingUp, Receipt, Users, Shield, AlertCircle, Target, Brain } from 'lucide-react'
 import SpendingChart from '@/components/dashboard/SpendingChart'
 import CategoryChart from '@/components/dashboard/CategoryChart'
 
@@ -156,6 +156,25 @@ export default async function DashboardPage() {
           <div className="text-xs text-muted-foreground mt-1">{policies?.length ?? 0} active {policies?.length === 1 ? 'policy' : 'policies'}</div>
         </div>
       </div>
+
+      {/* Should I? quick access card */}
+<div className="bg-gradient-to-r from-primary/10 to-emerald-50 border border-primary/20 rounded-2xl p-5 mb-6 flex items-center justify-between">
+  <div className="flex items-center gap-4">
+    <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shrink-0">
+      <Brain className="w-6 h-6 text-white" />
+    </div>
+    <div>
+      <h3 className="font-semibold text-sm">Not sure if a procedure is worth it?</h3>
+      <p className="text-xs text-muted-foreground mt-0.5">
+        Get a personalised recommendation using your insurance, budget & live prices
+      </p>
+    </div>
+  </div>
+  <a href="/dashboard/advisor" className="btn-primary shrink-0 flex items-center gap-2 text-sm">
+    <Brain className="w-4 h-4" />
+    Ask now
+  </a>
+</div>
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">

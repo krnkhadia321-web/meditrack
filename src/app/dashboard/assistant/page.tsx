@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Bot, Send, Loader2, User, Sparkles } from 'lucide-react'
+import Link from 'next/link'
+import { Bot, Send, Loader2, User, Sparkles, Brain, ChevronRight } from 'lucide-react'
 
 type ToolResult = {
   tool: string
@@ -22,6 +23,12 @@ const SUGGESTED_PROMPTS = [
   'Compare Apollo vs Fortis for knee replacement',
   'Log ₹500 medicine expense from Apollo pharmacy today',
 ]
+
+const ADVISOR_SHORTCUT = {
+  title: 'Should I proceed with a procedure?',
+  desc: 'Get personalised cost analysis before spending',
+  href: '/dashboard/advisor',
+}
 
 const TOOL_LABELS: Record<string, string> = {
   search_hospital_prices: '🔍 Searching hospital prices...',
@@ -261,20 +268,6 @@ export default function AssistantPage() {
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
-      <div className="page-header mb-4 shrink-0">
-        <div>
-          <h1 className="page-title flex items-center gap-2">
-            <Bot className="w-6 h-6 text-primary" />
-            AI Assistant
-          </h1>
-          <p className="page-subtitle">Ask anything about your healthcare costs</p>
-        </div>
-        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-          <span className="text-xs font-medium text-emerald-700">Powered by Claude</span>
-        </div>
-      </div>
-
       <div className="flex-1 bg-white rounded-2xl border border-border flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
 
@@ -287,6 +280,18 @@ export default function AssistantPage() {
               <p className="text-muted-foreground text-sm mb-8 max-w-sm">
                 I can help you track expenses, find cheaper hospitals, suggest generic medicines, and discover government health schemes.
               </p>
+              <Link href="/dashboard/advisor" className="w-full max-w-lg flex items-center justify-between bg-gradient-to-r from-primary/10 to-emerald-50 border border-primary/20 rounded-2xl px-5 py-4 mb-3 hover:shadow-sm transition-all group">
+  <div className="flex items-center gap-3">
+    <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shrink-0">
+      <Brain className="w-4 h-4 text-white" />
+    </div>
+    <div className="text-left">
+      <div className="text-sm font-semibold">Should I proceed with a procedure?</div>
+      <div className="text-xs text-muted-foreground mt-0.5">Get personalised cost analysis before spending</div>
+    </div>
+  </div>
+  <ChevronRight className="w-4 h-4 text-primary" />
+</Link>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
                 {SUGGESTED_PROMPTS.map((prompt) => (
                   <button

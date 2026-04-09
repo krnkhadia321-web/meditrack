@@ -6,12 +6,6 @@ const nextConfig = {
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
     ],
   },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals = [...(config.externals || []), "tesseract.js"];
-    }
-    return config;
-  },
 };
 
 module.exports = nextConfig;

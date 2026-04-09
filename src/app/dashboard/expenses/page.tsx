@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Expense, FamilyMember, ExpenseCategory } from '@/types'
-import { Plus, X, Loader2, Trash2, Receipt, Filter } from 'lucide-react'
+import { Plus, X, Loader2, Trash2, Receipt, Filter, Camera, CheckCircle2 } from 'lucide-react'
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -15,8 +15,12 @@ export default function ExpensesPage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [filterMember, setFilterMember] = useState('')
-  const [filterCategory, setFilterCategory] = useState('')
-  const supabase = createClient()
+const [filterCategory, setFilterCategory] = useState('')
+const [scanning, setScanning] = useState(false)
+const [scanResult, setScanResult] = useState<any>(null)
+const [showScanReview, setShowScanReview] = useState(false)
+const fileInputRef = useRef<HTMLInputElement>(null)
+const supabase = createClient()
 
   const emptyForm = {
     description: '', amount: '', covered_amount: '0',
@@ -41,6 +45,48 @@ export default function ExpensesPage() {
     setCategories(cat ?? [])
     setLoading(false)
   }
+
+  async function handleScanBill(e: React.ChangeEvent<HTMLInputElement>) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  setScanning(true)
+  setScanResult(null)
+
+  try {
+    const formData = new FormData()
+    formData.append('image', file)
+    const res = await fetch('/api/ocr', {
+      method: 'POST',
+      body: formData,
+    })
+    const data = await res.json()
+    if (data.error) throw new Error(data.error)
+
+    // Pre-fill the expense form with scanned data
+    setForm({
+      description: data.extracted.description ?? '',
+      amount: data.extracted.amount ? String(data.extracted.amount) : '',
+      covered_amount: '0',
+      expense_date: data.extracted.expense_date ?? new Date().toISOString().split('T')[0],
+      member_id: '',
+      category_id: categories.find(c =>
+        c.name.toLowerCase() === (data.extracted.category ?? '').toLowerCase()
+      )?.id ?? '',
+      hospital_name: data.extracted.hospital_name ?? '',
+      doctor_name: data.extracted.doctor_name ?? '',
+      notes: data.extracted.notes ?? '',
+    })
+    setScanResult(data.extracted)
+    setShowScanReview(true)
+    setShowModal(true)
+  } catch (err: any) {
+    alert(err.message ?? 'Failed to scan bill. Please try again with a clearer photo.')
+  } finally {
+    setScanning(false)
+    // Reset file input so same file can be selected again
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+}
 
   useEffect(() => { fetchData() }, [])
 
@@ -90,9 +136,29 @@ export default function ExpensesPage() {
           <h1 className="page-title">Expenses</h1>
           <p className="page-subtitle">Track all medical spending across your family</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Add expense
-        </button>
+        <div className="flex items-center gap-3">
+  <input
+    ref={fileInputRef}
+    type="file"
+    accept="image/*"
+    capture="environment"
+    className="hidden"
+    onChange={handleScanBill}
+  />
+  <button
+    onClick={() => fileInputRef.current?.click()}
+    disabled={scanning}
+    className="btn-secondary flex items-center gap-2"
+  >
+    {scanning
+      ? <Loader2 className="w-4 h-4 animate-spin" />
+      : <Camera className="w-4 h-4" />}
+    {scanning ? 'Scanning...' : 'Scan Bill'}
+  </button>
+  <button onClick={() => { setScanResult(null); setShowScanReview(false); setForm(emptyForm); setShowModal(true) }} className="btn-primary flex items-center gap-2">
+    <Plus className="w-4 h-4" /> Add expense
+  </button>
+</div>
       </div>
 
       {/* Summary bar */}
@@ -225,8 +291,17 @@ export default function ExpensesPage() {
               </button>
             </div>
             <form onSubmit={handleSave} className="p-6 space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Description *</label>
+  {showScanReview && scanResult && (
+    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2">
+      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+      <div>
+        <p className="text-xs font-semibold text-emerald-800">Bill scanned successfully</p>
+        <p className="text-xs text-emerald-600 mt-0.5">Review and edit the fields below before saving</p>
+      </div>
+    </div>
+  )}
+  <div>
+    <label className="text-sm font-medium mb-1.5 block">Description *</label>
                 <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
                   placeholder="e.g. Cardiology consultation" required className="input-field" />
               </div>

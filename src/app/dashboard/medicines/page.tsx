@@ -21,6 +21,7 @@ import {
   Sparkles,
   ClipboardList,
   FileText,
+  Camera,
 } from "lucide-react";
 
 type Medicine = {
@@ -89,6 +90,10 @@ export default function MedicinesPage() {
   const [showInactive, setShowInactive] = useState(false);
 
   const supabase = createClient();
+
+  const [scanningMed, setScanningMed] = useState(false);
+  const [showMedScanReview, setShowMedScanReview] = useState(false);
+  const medFileInputRef = useRef<HTMLInputElement>(null);
 
   // Prescription Explainer state
   const [activeTab, setActiveTab] = useState<"tracker" | "explainer">(
@@ -253,6 +258,53 @@ export default function MedicinesPage() {
     }));
   }
 
+  async function handleScanMedicine(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setScanningMed(true);
+    try {
+      const Tesseract = (await import("tesseract.js")).default;
+      const {
+        data: { text },
+      } = await Tesseract.recognize(file, "eng", { logger: () => {} });
+      if (!text || text.trim().length < 5)
+        throw new Error(
+          "Could not read the prescription. Please try a clearer photo.",
+        );
+      const res = await fetch("/api/ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, type: "medicine" }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      const freq = data.extracted.frequency ?? "Once daily";
+      setForm({
+        ...emptyForm,
+        name: data.extracted.name ?? "",
+        generic_name: data.extracted.generic_name ?? "",
+        dosage: data.extracted.dosage ?? "",
+        frequency: freq,
+        reminder_times: DEFAULT_TIMES[freq] ?? ["08:00"],
+        total_quantity: data.extracted.total_quantity
+          ? String(data.extracted.total_quantity)
+          : "",
+        remaining_quantity: data.extracted.total_quantity
+          ? String(data.extracted.total_quantity)
+          : "",
+        prescribed_by: data.extracted.prescribed_by ?? "",
+        notes: data.extracted.notes ?? "",
+      });
+      setShowMedScanReview(true);
+      setShowModal(true);
+    } catch (err: any) {
+      alert(err.message ?? "Failed to scan prescription.");
+    } finally {
+      setScanningMed(false);
+      if (medFileInputRef.current) medFileInputRef.current.value = "";
+    }
+  }
+
   async function handleRxImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -337,12 +389,38 @@ export default function MedicinesPage() {
               <Bell className="w-3.5 h-3.5" /> Reminders active
             </div>
           )}
-          <button
-            onClick={() => setShowModal(true)}
-            className="btn-primary flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" /> Add medicine
-          </button>
+          <div className="flex items-center gap-3">
+            <input
+              ref={medFileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleScanMedicine}
+            />
+            <button
+              onClick={() => medFileInputRef.current?.click()}
+              disabled={scanningMed}
+              className="btn-secondary flex items-center gap-2"
+            >
+              {scanningMed ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Camera className="w-4 h-4" />
+              )}
+              {scanningMed ? "Scanning..." : "Scan Prescription"}
+            </button>
+            <button
+              onClick={() => {
+                setShowMedScanReview(false);
+                setForm(emptyForm);
+                setShowModal(true);
+              }}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" /> Add medicine
+            </button>
+          </div>
         </div>
       </div>
 
@@ -696,6 +774,19 @@ export default function MedicinesPage() {
               </button>
             </div>
             <form onSubmit={handleSave} className="p-6 space-y-4">
+              {showMedScanReview && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-emerald-800">
+                      Prescription scanned successfully
+                    </p>
+                    <p className="text-xs text-emerald-600 mt-0.5">
+                      Review and edit the fields below before saving
+                    </p>
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium mb-1.5 block">
                   Family member *

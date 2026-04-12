@@ -1,40 +1,51 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { cn, getInitials } from '@/lib/utils'
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { cn, getInitials } from "@/lib/utils";
 import {
-  LayoutDashboard, Users, Receipt, FileText,
-  Shield, Bot, LogOut, Heart, Settings, Pill, Activity, Brain
-} from 'lucide-react'
+  LayoutDashboard,
+  Users,
+  Receipt,
+  FileText,
+  Shield,
+  Bot,
+  LogOut,
+  Heart,
+  Settings,
+  Pill,
+  Activity,
+  Brain,
+} from "lucide-react";
 
 const navItems = [
-  { href: '/dashboard',           icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/dashboard/family',    icon: Users,           label: 'Family' },
-  { href: '/dashboard/expenses',  icon: Receipt,         label: 'Expenses' },
-  { href: '/dashboard/medicines', icon: Pill, label: 'Medicines' },
-  { href: '/dashboard/vitals', icon: Activity, label: 'Vitals' },
-  { href: '/dashboard/records',   icon: FileText,        label: 'Health Records' },
-  { href: '/dashboard/insurance', icon: Shield,          label: 'Insurance' },
-  { href: '/dashboard/assistant', icon: Bot, label: 'AI Assistant' },
-  { href: '/dashboard/advisor',   icon: Brain,           label: 'Should I?' },
-]
+  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/dashboard/family", icon: Users, label: "Family" },
+  { href: "/dashboard/expenses", icon: Receipt, label: "Expenses" },
+  { href: "/dashboard/medicines", icon: Pill, label: "Medicines" },
+  { href: "/dashboard/vitals", icon: Activity, label: "Vitals" },
+  { href: "/dashboard/records", icon: FileText, label: "Health Records" },
+  { href: "/dashboard/insurance", icon: Shield, label: "Insurance" },
+  { href: "/dashboard/assistant", icon: Bot, label: "AI Assistant" },
+  { href: "/dashboard/advisor", icon: Brain, label: "Should I?" },
+  { href: "/dashboard/health-score", icon: Heart, label: "Health Score" },
+];
 
 type Props = {
-  userName: string
-  userEmail: string
-}
+  userName: string;
+  userEmail: string;
+};
 
 export default function Sidebar({ userName, userEmail }: Props) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const supabase = createClient()
+  const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
 
   async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.push('/auth/signin')
-    router.refresh()
+    await supabase.auth.signOut();
+    router.push("/auth/signin");
+    router.refresh();
   }
 
   return (
@@ -46,7 +57,9 @@ export default function Sidebar({ userName, userEmail }: Props) {
         </div>
         <div>
           <div className="font-semibold text-sm leading-tight">MediTrack</div>
-          <div className="text-xs text-muted-foreground">Healthcare Optimizer</div>
+          <div className="text-xs text-muted-foreground">
+            Healthcare Optimizer
+          </div>
         </div>
       </div>
 
@@ -56,26 +69,38 @@ export default function Sidebar({ userName, userEmail }: Props) {
           Menu
         </p>
         {navItems.map(({ href, icon: Icon, label }) => {
-          const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+          const active =
+            pathname === href ||
+            (href !== "/dashboard" && pathname.startsWith(href));
           return (
-            <Link key={href} href={href} className={cn('sidebar-link', active && 'active')}>
+            <Link
+              key={href}
+              href={href}
+              className={cn("sidebar-link", active && "active")}
+            >
               <Icon className="w-4 h-4 shrink-0" />
               <span className="flex-1">{label}</span>
-              
             </Link>
-          )
+          );
         })}
       </nav>
 
       {/* Bottom links */}
       <div className="px-3 border-t border-border pt-4 mt-4 space-y-0.5">
-        <Link href="/dashboard/settings"
-          className={cn('sidebar-link', pathname === '/dashboard/settings' && 'active')}>
+        <Link
+          href="/dashboard/settings"
+          className={cn(
+            "sidebar-link",
+            pathname === "/dashboard/settings" && "active",
+          )}
+        >
           <Settings className="w-4 h-4" />
           Settings
         </Link>
-        <button onClick={handleSignOut}
-          className="sidebar-link w-full text-left text-destructive hover:text-destructive hover:bg-destructive/10">
+        <button
+          onClick={handleSignOut}
+          className="sidebar-link w-full text-left text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
           <LogOut className="w-4 h-4" />
           Sign out
         </button>
@@ -88,9 +113,11 @@ export default function Sidebar({ userName, userEmail }: Props) {
         </div>
         <div className="min-w-0">
           <div className="text-sm font-medium truncate">{userName}</div>
-          <div className="text-xs text-muted-foreground truncate">{userEmail}</div>
+          <div className="text-xs text-muted-foreground truncate">
+            {userEmail}
+          </div>
         </div>
       </div>
     </aside>
-  )
+  );
 }

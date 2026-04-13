@@ -179,12 +179,38 @@ export default function RecordsPage() {
             Store and manage medical documents for your family
           </p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" /> Add record
-        </button>
+        <div className="flex items-center gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleScanRecord}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={scanning}
+            className="btn-secondary flex items-center gap-2"
+          >
+            {scanning ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Camera className="w-4 h-4" />
+            )}
+            {scanning ? "Scanning..." : "Scan Document"}
+          </button>
+          <button
+            onClick={() => {
+              setShowScanReview(false);
+              setForm(emptyForm);
+              setShowModal(true);
+            }}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Add record
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

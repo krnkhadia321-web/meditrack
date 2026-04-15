@@ -1,2 +1,0 @@
-- [MediTrack project overview](project_meditrack.md) — stack, features built, phase roadmap, build gotchas
-- [MediTrack build workflow](feedback_workflow.md) — slow pace, one file at a time, screenshots, exact locations

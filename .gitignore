@@ -34,3 +34,7 @@ yarn-error.log*
 # Editor
 .vscode/
 .idea/
+
+# Claude Code agent state (local-only)
+.claude/
+memory/

@@ -22,6 +22,9 @@ import {
   ClipboardList,
   FileText,
   Camera,
+  MapPin,
+  Search,
+  Navigation,
 } from "lucide-react";
 
 type Medicine = {
@@ -91,14 +94,20 @@ export default function MedicinesPage() {
 
   const supabase = createClient();
 
+  // Store finder state
+  const [storeCity, setStoreCity] = useState("");
+  const [searchingStores, setSearchingStores] = useState(false);
+  const [storeResults, setStoreResults] = useState<any>(null);
+  const [storeError, setStoreError] = useState("");
+
   const [scanningMed, setScanningMed] = useState(false);
   const [showMedScanReview, setShowMedScanReview] = useState(false);
   const medFileInputRef = useRef<HTMLInputElement>(null);
 
   // Prescription Explainer state
-  const [activeTab, setActiveTab] = useState<"tracker" | "explainer">(
-    "tracker",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "tracker" | "explainer" | "stores"
+  >("tracker");
   const [rxText, setRxText] = useState("");
   const [rxScanning, setRxScanning] = useState(false);
   const [rxAnalysing, setRxAnalysing] = useState(false);
@@ -305,6 +314,27 @@ export default function MedicinesPage() {
     }
   }
 
+  async function handleFindStores() {
+    if (!storeCity.trim()) return;
+    setSearchingStores(true);
+    setStoreResults(null);
+    setStoreError("");
+    try {
+      const res = await fetch("/api/jan-aushadhi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ city: storeCity.trim() }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setStoreResults(data);
+    } catch (err: any) {
+      setStoreError(err.message ?? "Failed to find stores.");
+    } finally {
+      setSearchingStores(false);
+    }
+  }
+
   async function handleRxImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -426,7 +456,7 @@ export default function MedicinesPage() {
 
       {/* Tab switcher */}
       <div className="flex gap-1 bg-muted/50 rounded-xl p-1 mb-6 w-fit">
-        {(["tracker", "explainer"] as const).map((tab) => (
+        {(["tracker", "explainer", "stores"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -438,7 +468,9 @@ export default function MedicinesPage() {
           >
             {tab === "tracker"
               ? "💊 Medicine Tracker"
-              : "📋 Prescription Explainer"}
+              : tab === "explainer"
+                ? "📋 Prescription Explainer"
+                : "🏪 Find Jan Aushadhi"}
           </button>
         ))}
       </div>
@@ -758,6 +790,251 @@ export default function MedicinesPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Jan Aushadhi Store Finder Tab */}
+      {activeTab === "stores" && (
+        <div className="space-y-6">
+          {/* Search input */}
+          <div className="bg-white rounded-2xl border border-border p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                <MapPin className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-sm">
+                  Find Jan Aushadhi Stores
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Pradhan Mantri Bharatiya Janaushadhi Kendras offer medicines
+                  at 50–90% lower prices
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <input
+                value={storeCity}
+                onChange={(e) => setStoreCity(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleFindStores()}
+                placeholder="Enter your city e.g. Gurugram, Mumbai, Delhi..."
+                className="input-field flex-1"
+              />
+              <button
+                onClick={handleFindStores}
+                disabled={!storeCity.trim() || searchingStores}
+                className="btn-primary flex items-center gap-2 shrink-0"
+              >
+                {searchingStores ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4" />
+                )}
+                {searchingStores ? "Searching..." : "Search"}
+              </button>
+            </div>
+
+            {/* Info cards */}
+            {!storeResults && !searchingStores && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
+                {[
+                  {
+                    icon: "💊",
+                    title: "50–90% cheaper",
+                    desc: "Generic medicines at fraction of MRP",
+                  },
+                  {
+                    icon: "🏪",
+                    title: "10,500+ stores",
+                    desc: "Across India in every major city",
+                  },
+                  {
+                    icon: "📱",
+                    title: "PMJAK app",
+                    desc: "Download to find nearest store with GPS",
+                  },
+                ].map((item) => (
+                  <div key={item.title} className="bg-muted/40 rounded-xl p-4">
+                    <div className="text-2xl mb-2">{item.icon}</div>
+                    <div className="font-semibold text-sm mb-1">
+                      {item.title}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {item.desc}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Loading */}
+          {searchingStores && (
+            <div className="bg-white rounded-2xl border border-border p-8 text-center">
+              <Loader2 className="w-8 h-8 text-emerald-600 animate-spin mx-auto mb-3" />
+              <p className="font-semibold text-sm mb-1">
+                Searching for stores in {storeCity}...
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Looking up Jan Aushadhi Kendras near you
+              </p>
+            </div>
+          )}
+
+          {/* Error */}
+          {storeError && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+              <p className="text-sm text-red-700">{storeError}</p>
+            </div>
+          )}
+
+          {/* Results */}
+          {storeResults && !searchingStores && (
+            <div className="space-y-4">
+              {/* Summary */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span className="font-semibold text-sm text-emerald-800">
+                    {storeResults.totalFound > 0
+                      ? `Found ${storeResults.totalFound} Jan Aushadhi store${storeResults.totalFound > 1 ? "s" : ""} in ${storeResults.city}`
+                      : `Searching in ${storeResults.city}`}
+                  </span>
+                </div>
+                {storeResults.summary && (
+                  <p className="text-xs text-emerald-700 leading-relaxed">
+                    {storeResults.summary}
+                  </p>
+                )}
+              </div>
+
+              {/* Store cards */}
+              {storeResults.stores?.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {storeResults.stores.map((store: any, i: number) => (
+                    <div
+                      key={i}
+                      className="bg-white rounded-2xl border border-border p-5 hover:shadow-sm transition-shadow"
+                    >
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
+                          <MapPin className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-sm leading-tight">
+                            {store.name}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {store.area}
+                          </div>
+                        </div>
+                      </div>
+
+                      {store.address &&
+                        store.address !== `${storeResults.city}, India` && (
+                          <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                            {store.address}
+                          </p>
+                        )}
+
+                      {store.phone && (
+                        <div className="flex items-center gap-1.5 text-xs text-blue-600 mb-3">
+                          <span>📞</span>
+                          <a
+                            href={`tel:${store.phone}`}
+                            className="hover:underline"
+                          >
+                            {store.phone}
+                          </a>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <a
+                          href={`https://www.google.com/maps/search/Jan+Aushadhi+Kendra+${encodeURIComponent(store.area || storeResults.city)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-secondary text-xs flex items-center gap-1.5 flex-1 justify-center"
+                        >
+                          <Navigation className="w-3 h-3" /> Directions
+                        </a>
+                        {store.url && (
+                          <a
+                            href={store.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-ghost text-xs flex items-center gap-1.5 flex-1 justify-center"
+                          >
+                            More info →
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-border p-8 text-center">
+                  <div className="text-3xl mb-3">🏪</div>
+                  <h3 className="font-semibold mb-2">
+                    No specific stores found online
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Jan Aushadhi stores may not be listed online yet. Try these
+                    options:
+                  </p>
+                  <div className="space-y-2 text-left max-w-sm mx-auto">
+                    {[
+                      "Download the PMJAK app — has GPS-based store locator",
+                      "Call 1800-180-8080 (toll free) to find nearest store",
+                      "Visit janaushadhi.gov.in for official store list",
+                      "Ask at your local government hospital",
+                    ].map((tip, i) => (
+                      <div
+                        key={i}
+                        className="flex gap-2 text-sm text-muted-foreground"
+                      >
+                        <span className="text-emerald-600 font-medium shrink-0">
+                          {i + 1}.
+                        </span>
+                        <span>{tip}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <a
+                    href="https://www.google.com/maps/search/Jan+Aushadhi+Kendra+near+me"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary mt-5 inline-flex items-center gap-2 text-sm"
+                  >
+                    <Navigation className="w-4 h-4" /> Search on Google Maps
+                  </a>
+                </div>
+              )}
+
+              {/* PMJAK app promotion */}
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-sm text-blue-800">
+                    📱 PMJAK App
+                  </p>
+                  <p className="text-xs text-blue-600 mt-0.5">
+                    Official app with real-time GPS store locator + medicine
+                    price checker
+                  </p>
+                </div>
+                <a
+                  href="https://play.google.com/store/apps/details?id=in.cdac.PMBJK"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary text-xs shrink-0 ml-3"
+                >
+                  Download
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Add Medicine Modal */}

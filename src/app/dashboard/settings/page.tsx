@@ -5,9 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import {
   User, Download, Shield, Info, Loader2, CheckCircle2,
-  Heart, Calculator, LogOut,
+  Heart, Calculator, LogOut, FileText,
 } from 'lucide-react'
 import TaxCalculator from '@/components/dashboard/TaxCalculator'
+import ReportsPanel from '@/components/reports/ReportsPanel'
 
 type Profile = {
   full_name: string
@@ -15,19 +16,21 @@ type Profile = {
   phone: string | null
 }
 
-type TabKey = 'tax' | 'profile' | 'privacy' | 'about' | 'signout'
+type TabKey = 'tax' | 'profile' | 'reports' | 'privacy' | 'about' | 'signout'
 
 const TABS: { key: TabKey; label: string; sub: string; icon: any; accent: string }[] = [
-  { key: 'tax',     label: 'Section 80D',       sub: 'Tax deduction calculator',    icon: Calculator, accent: 'amber' },
-  { key: 'profile', label: 'Profile',           sub: 'Update personal information', icon: User,       accent: 'primary' },
-  { key: 'privacy', label: 'Privacy & Security', sub: 'Data protection & export',   icon: Shield,     accent: 'emerald' },
-  { key: 'about',   label: 'About MediTrack',   sub: 'Version and app info',        icon: Info,       accent: 'purple' },
-  { key: 'signout', label: 'Sign out',          sub: 'End this session',            icon: LogOut,     accent: 'red' },
+  { key: 'tax',     label: 'Section 80D',        sub: 'Tax deduction calculator',    icon: Calculator, accent: 'amber' },
+  { key: 'profile', label: 'Profile',            sub: 'Update personal information', icon: User,       accent: 'primary' },
+  { key: 'reports', label: 'Reports',            sub: 'Monthly & annual PDFs',       icon: FileText,   accent: 'blue' },
+  { key: 'privacy', label: 'Privacy & Security', sub: 'Data protection & export',    icon: Shield,     accent: 'emerald' },
+  { key: 'about',   label: 'About MediTrack',    sub: 'Version and app info',        icon: Info,       accent: 'purple' },
+  { key: 'signout', label: 'Sign out',           sub: 'End this session',            icon: LogOut,     accent: 'red' },
 ]
 
 const ACCENT_CLASSES: Record<string, { bg: string; text: string; ring: string }> = {
   amber:   { bg: 'bg-amber-50',   text: 'text-amber-600',   ring: 'ring-amber-200' },
   primary: { bg: 'bg-primary/10', text: 'text-primary',     ring: 'ring-primary/30' },
+  blue:    { bg: 'bg-blue-50',    text: 'text-blue-600',    ring: 'ring-blue-200' },
   emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', ring: 'ring-emerald-200' },
   purple:  { bg: 'bg-purple-50',  text: 'text-purple-600',  ring: 'ring-purple-200' },
   red:     { bg: 'bg-red-50',     text: 'text-red-600',     ring: 'ring-red-200' },
@@ -198,6 +201,9 @@ export default function SettingsPage() {
               <TaxCalculator userId={userEmail} />
             </div>
           )}
+
+          {/* Reports */}
+          {activeTab === 'reports' && <ReportsPanel />}
 
           {/* Profile */}
           {activeTab === 'profile' && (

@@ -3,28 +3,14 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency } from '@/lib/utils'
+import { calculate80D, currentFYStartYear, fyBounds, type Tax80D } from '@/lib/reports/aggregate'
 import { CheckCircle2, AlertCircle, Loader2, Download } from 'lucide-react'
 
-type TaxData = {
-  insurancePremium: number
-  preventiveCheckups: number
-  seniorCitizenPremium: number
-  total80D: number
-  selfLimit: number
-  seniorLimit: number
-  maxDeduction: number
-  yearlyExpenses: { date: string; description: string; amount: number; type: string }[]
-}
-
-const PREVENTIVE_CATEGORIES = ['diagnostics', 'vaccination']
-const CURRENT_FY_START = new Date().getMonth() >= 3
-  ? new Date(new Date().getFullYear(), 3, 1)
-  : new Date(new Date().getFullYear() - 1, 3, 1)
-const CURRENT_FY_END = new Date(CURRENT_FY_START.getFullYear() + 1, 2, 31)
-const FY_LABEL = `FY ${CURRENT_FY_START.getFullYear()}–${String(CURRENT_FY_START.getFullYear() + 1).slice(2)}`
+const FY = fyBounds(currentFYStartYear())
+const FY_LABEL = FY.label
 
 export default function TaxCalculator({ userId }: { userId: string }) {
-  const [data, setData] = useState<TaxData | null>(null)
+  const [data, setData] = useState<Tax80D | null>(null)
   const [loading, setLoading] = useState(true)
   const [hasSenior, setHasSenior] = useState(false)
   const supabase = createClient()
@@ -36,10 +22,10 @@ export default function TaxCalculator({ userId }: { userId: string }) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const startDate = CURRENT_FY_START.toISOString().split('T')[0]
-    const endDate = CURRENT_FY_END.toISOString().split('T')[0]
+    const startDate = FY.start.toISOString().split('T')[0]
+    const endDate = FY.end.toISOString().split('T')[0]
 
-    const [{ data: expenses }, { data: policies }, { data: members }] = await Promise.all([
+    const [{ data: expenses }, { data: policies }] = await Promise.all([
       supabase.from('expenses')
         .select('*, expense_categories(name)')
         .eq('user_id', user.id)
@@ -49,59 +35,9 @@ export default function TaxCalculator({ userId }: { userId: string }) {
         .select('*')
         .eq('user_id', user.id)
         .eq('is_active', true),
-      supabase.from('family_members')
-        .select('*')
-        .eq('user_id', user.id),
     ])
 
-    // Insurance premium (self + family, non-senior)
-    const insurancePremium = policies
-      ?.filter(p => !p.is_senior)
-      ?.reduce((s, p) => {
-        if (!p.premium_annual) return s
-        const monthsInFY = 12
-        return s + Number(p.premium_annual)
-      }, 0) ?? 0
-
-    // Preventive health checkups (capped at ₹5,000)
-    const preventiveExpenses = expenses?.filter(e => {
-      const catName = (e.expense_categories as any)?.name?.toLowerCase() ?? ''
-      return PREVENTIVE_CATEGORIES.some(c => catName.includes(c))
-    }) ?? []
-    const preventiveTotal = preventiveExpenses.reduce((s, e) => s + Number(e.amount), 0)
-    const preventiveCheckups = Math.min(preventiveTotal, 5000)
-
-    const selfLimit = 25000
-    const seniorLimit = hasSenior ? 50000 : 0
-    const selfDeductible = Math.min(insurancePremium + preventiveCheckups, selfLimit)
-    const total80D = selfDeductible + seniorLimit
-    const maxDeduction = selfLimit + (hasSenior ? 50000 : 0)
-
-    const yearlyExpenses = [
-      ...(policies?.map(p => ({
-        date: p.created_at?.split('T')[0] ?? '',
-        description: `${p.provider_name} — ${p.plan_name ?? 'Health Insurance'}`,
-        amount: Number(p.premium_annual ?? 0),
-        type: 'Insurance premium',
-      })) ?? []),
-      ...preventiveExpenses.map(e => ({
-        date: e.expense_date,
-        description: e.description,
-        amount: Number(e.amount),
-        type: 'Preventive checkup',
-      })),
-    ]
-
-    setData({
-      insurancePremium,
-      preventiveCheckups,
-      seniorCitizenPremium: hasSenior ? 50000 : 0,
-      total80D,
-      selfLimit,
-      seniorLimit,
-      maxDeduction,
-      yearlyExpenses,
-    })
+    setData(calculate80D(policies, expenses, hasSenior))
     setLoading(false)
   }
 
@@ -120,7 +56,7 @@ export default function TaxCalculator({ userId }: { userId: string }) {
       '',
       '--- ELIGIBLE EXPENSES ---',
       'Date,Description,Amount,Type',
-      ...data.yearlyExpenses.map(e =>
+      ...data.eligibleExpenses.map(e =>
         `"${e.date}","${e.description}","${e.amount}","${e.type}"`
       ),
     ].filter(Boolean)
@@ -151,7 +87,7 @@ export default function TaxCalculator({ userId }: { userId: string }) {
       {/* FY Label */}
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground bg-muted rounded-full px-3 py-1">
-          {FY_LABEL} (Apr {CURRENT_FY_START.getFullYear()} – Mar {CURRENT_FY_END.getFullYear()})
+          {FY_LABEL} (Apr {FY.start.getFullYear()} – Mar {FY.end.getFullYear()})
         </span>
         <label className="flex items-center gap-2 text-xs cursor-pointer">
           <input type="checkbox" checked={hasSenior} onChange={e => setHasSenior(e.target.checked)} />

@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { toolDefinitions, executeTool, ToolName } from '@/lib/tools'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY!,
 })

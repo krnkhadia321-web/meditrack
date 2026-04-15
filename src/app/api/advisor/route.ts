@@ -2,6 +2,8 @@ import Groq from 'groq-sdk'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! })
 
 const ADVISOR_SYSTEM_PROMPT = `You are MediTrack's Pre-Decision Advisor — India's smartest healthcare financial advisor. 

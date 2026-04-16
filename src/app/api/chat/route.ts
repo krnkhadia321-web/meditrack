@@ -1,6 +1,7 @@
 import Groq from 'groq-sdk'
 import { createClient } from '@/lib/supabase/server'
 import { toolDefinitions, executeTool, ToolName } from '@/lib/tools'
+import { getAILocale, aiLanguageInstruction } from '@/lib/aiLocale'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -60,9 +61,10 @@ Family members: ${members?.map(m => `${m.name} (${m.relation})`).join(', ') || '
 Recent expenses: ${recentExpenses?.map(e => `${e.description} ₹${e.amount}`).join(', ') || 'None'}
 `
 
+    const locale = await getAILocale()
     const systemMessage = {
       role: 'system' as const,
-      content: SYSTEM_PROMPT + '\n\nUser context:\n' + userContext,
+      content: SYSTEM_PROMPT + '\n\nUser context:\n' + userContext + aiLanguageInstruction(locale),
     }
 
     const recentMessages = messages.slice(-6)

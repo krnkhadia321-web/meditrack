@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import TaxCalculator from '@/components/dashboard/TaxCalculator'
 import ReportsPanel from '@/components/reports/ReportsPanel'
+import LanguageSwitcher from '@/components/settings/LanguageSwitcher'
 
 type Profile = {
   full_name: string
@@ -207,43 +208,49 @@ export default function SettingsPage() {
 
           {/* Profile */}
           {activeTab === 'profile' && (
-            <div className="bg-white rounded-2xl border border-border p-6">
-              <form onSubmit={handleSaveProfile} className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Full name</label>
-                  <input value={profile.full_name}
-                    onChange={e => setProfile({ ...profile, full_name: e.target.value })}
-                    placeholder="Your full name" className="input-field" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Email</label>
-                  <input value={userEmail} disabled
-                    className="input-field opacity-60 cursor-not-allowed bg-muted/40" />
-                  <p className="text-xs text-muted-foreground mt-1">Email cannot be changed</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-4">
+              <div className="bg-white rounded-2xl border border-border p-6">
+                <form onSubmit={handleSaveProfile} className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">City</label>
-                    <input value={profile.city ?? ''}
-                      onChange={e => setProfile({ ...profile, city: e.target.value })}
-                      placeholder="e.g. Delhi" className="input-field" />
+                    <label className="text-sm font-medium mb-1.5 block">Full name</label>
+                    <input value={profile.full_name}
+                      onChange={e => setProfile({ ...profile, full_name: e.target.value })}
+                      placeholder="Your full name" className="input-field" />
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">Phone</label>
-                    <input value={profile.phone ?? ''}
-                      onChange={e => setProfile({ ...profile, phone: e.target.value })}
-                      placeholder="e.g. 9876543210" className="input-field" />
+                    <label className="text-sm font-medium mb-1.5 block">Email</label>
+                    <input value={userEmail} disabled
+                      className="input-field opacity-60 cursor-not-allowed bg-muted/40" />
+                    <p className="text-xs text-muted-foreground mt-1">Email cannot be changed</p>
                   </div>
-                </div>
-                <button type="submit" disabled={saving}
-                  className="btn-primary flex items-center gap-2">
-                  {saving
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
-                    : saved
-                    ? <><CheckCircle2 className="w-4 h-4" /> Saved!</>
-                    : 'Save changes'}
-                </button>
-              </form>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">City</label>
+                      <input value={profile.city ?? ''}
+                        onChange={e => setProfile({ ...profile, city: e.target.value })}
+                        placeholder="e.g. Delhi" className="input-field" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">Phone</label>
+                      <input value={profile.phone ?? ''}
+                        onChange={e => setProfile({ ...profile, phone: e.target.value })}
+                        placeholder="e.g. 9876543210" className="input-field" />
+                    </div>
+                  </div>
+                  <button type="submit" disabled={saving}
+                    className="btn-primary flex items-center gap-2">
+                    {saving
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                      : saved
+                      ? <><CheckCircle2 className="w-4 h-4" /> Saved!</>
+                      : 'Save changes'}
+                  </button>
+                </form>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-border p-6">
+                <LanguageSwitcher />
+              </div>
             </div>
           )}
 

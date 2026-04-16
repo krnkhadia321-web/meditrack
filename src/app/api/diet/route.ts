@@ -1,11 +1,15 @@
 import Groq from 'groq-sdk'
 import { NextResponse } from 'next/server'
+import { getAILocale, aiLanguageInstruction } from '@/lib/aiLocale'
+
+export const dynamic = 'force-dynamic'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! })
 
 export async function POST(request: Request) {
   try {
     const { memberContext, goal, memberName } = await request.json()
+    const locale = await getAILocale()
 
     const prompt = `You are a certified Indian nutritionist. Based on the following health profile, create a personalised 7-day Indian diet chart.
 
@@ -42,7 +46,7 @@ The weeklyPlan array must have exactly 7 items for Monday through Sunday.`
     const response = await groq.chat.completions.create({
       model: 'meta-llama/llama-4-scout-17b-16e-instruct',
       max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: prompt + aiLanguageInstruction(locale) }],
       temperature: 0.7,
     })
 

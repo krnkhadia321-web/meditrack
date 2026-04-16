@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Heart, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react'
 
@@ -13,6 +14,7 @@ export default function SignUpPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const supabase = createClient()
+  const t = useTranslations('auth')
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault()
@@ -34,11 +36,11 @@ export default function SignUpPage() {
           <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <Heart className="w-8 h-8 text-emerald-600" fill="currentColor" />
           </div>
-          <h2 className="text-2xl font-semibold mb-2">Check your email</h2>
+          <h2 className="text-2xl font-semibold mb-2">{t('checkEmail')}</h2>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.
+            {t('checkEmailDesc', { email })}
           </p>
-          <Link href="/auth/signin" className="btn-primary mt-6 inline-flex">Back to sign in</Link>
+          <Link href="/auth/signin" className="btn-primary mt-6 inline-flex">{t('backToSignIn')}</Link>
         </div>
       </div>
     )
@@ -54,32 +56,32 @@ export default function SignUpPage() {
           <span className="font-semibold text-lg">MediTrack</span>
         </div>
 
-        <h2 className="text-2xl font-semibold mb-1">Create your account</h2>
-        <p className="text-muted-foreground text-sm mb-8">Free forever for personal use</p>
+        <h2 className="text-2xl font-semibold mb-1">{t('signupTitle')}</h2>
+        <p className="text-muted-foreground text-sm mb-8">{t('signupSubtitle')}</p>
 
         <form onSubmit={handleSignUp} className="space-y-4">
           <div>
-            <label className="text-sm font-medium mb-1.5 block">Full name</label>
+            <label className="text-sm font-medium mb-1.5 block">{t('fullName')}</label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)}
-                placeholder="Rahul Sharma" required className="input-field pl-10" />
+                placeholder={t('fullNamePlaceholder')} required className="input-field pl-10" />
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium mb-1.5 block">Email</label>
+            <label className="text-sm font-medium mb-1.5 block">{t('email')}</label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com" required className="input-field pl-10" />
+                placeholder={t('emailPlaceholder')} required className="input-field pl-10" />
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium mb-1.5 block">Password</label>
+            <label className="text-sm font-medium mb-1.5 block">{t('password')}</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min. 8 characters" minLength={8} required className="input-field pl-10" />
+                placeholder={t('passwordMinPlaceholder')} minLength={8} required className="input-field pl-10" />
             </div>
           </div>
           {error && (
@@ -87,14 +89,14 @@ export default function SignUpPage() {
           )}
           <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            Create account
+            {t('createAccount')}
             {!loading && <ArrowRight className="w-4 h-4" />}
           </button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          Already have an account?{' '}
-          <Link href="/auth/signin" className="text-primary font-medium hover:underline">Sign in</Link>
+          {t('haveAccount')}{' '}
+          <Link href="/auth/signin" className="text-primary font-medium hover:underline">{t('signIn')}</Link>
         </p>
       </div>
     </div>

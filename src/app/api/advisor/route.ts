@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk'
 import { createClient } from '@/lib/supabase/server'
+import { getAILocale, aiLanguageInstruction } from '@/lib/aiLocale'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -285,12 +286,15 @@ if (!userCity) {
       { role: 'user', content: query },
     ]
 
+    const locale = await getAILocale()
+    const systemPrompt = ADVISOR_SYSTEM_PROMPT + aiLanguageInstruction(locale)
+
     // First call — let Groq decide to use the tool
     let response = await groq.chat.completions.create({
       model: 'meta-llama/llama-4-scout-17b-16e-instruct',
       max_tokens: 1500,
       messages: [
-        { role: 'system', content: ADVISOR_SYSTEM_PROMPT },
+        { role: 'system', content: systemPrompt },
         ...messages,
       ],
       tools: [advisorTool],
@@ -320,7 +324,7 @@ if (!userCity) {
           model: 'meta-llama/llama-4-scout-17b-16e-instruct',
           max_tokens: 1500,
           messages: [
-            { role: 'system', content: ADVISOR_SYSTEM_PROMPT },
+            { role: 'system', content: systemPrompt },
             ...messages,
           ],
           tools: [advisorTool],

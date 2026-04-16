@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { cn, getInitials } from "@/lib/utils";
 import {
@@ -20,16 +21,16 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/dashboard/family", icon: Users, label: "Family" },
-  { href: "/dashboard/expenses", icon: Receipt, label: "Expenses" },
-  { href: "/dashboard/medicines", icon: Pill, label: "Medicines" },
-  { href: "/dashboard/vitals", icon: Activity, label: "Vitals" },
-  { href: "/dashboard/records", icon: FileText, label: "Health Records" },
-  { href: "/dashboard/insurance", icon: Shield, label: "Insurance" },
-  { href: "/dashboard/assistant", icon: Bot, label: "AI Assistant" },
-  { href: "/dashboard/advisor", icon: Brain, label: "Should I?" },
-  { href: "/dashboard/health-score", icon: Heart, label: "Health Score" },
+  { href: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const },
+  { href: "/dashboard/family", icon: Users, key: "family" as const },
+  { href: "/dashboard/expenses", icon: Receipt, key: "expenses" as const },
+  { href: "/dashboard/medicines", icon: Pill, key: "medicines" as const },
+  { href: "/dashboard/vitals", icon: Activity, key: "vitals" as const },
+  { href: "/dashboard/records", icon: FileText, key: "records" as const },
+  { href: "/dashboard/insurance", icon: Shield, key: "insurance" as const },
+  { href: "/dashboard/assistant", icon: Bot, key: "assistant" as const },
+  { href: "/dashboard/advisor", icon: Brain, key: "advisor" as const },
+  { href: "/dashboard/health-score", icon: Heart, key: "healthScore" as const },
 ];
 
 type Props = {
@@ -41,6 +42,7 @@ export default function Sidebar({ userName, userEmail }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const t = useTranslations("nav");
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -66,9 +68,9 @@ export default function Sidebar({ userName, userEmail }: Props) {
       {/* Nav */}
       <nav className="flex-1 px-3 space-y-0.5">
         <p className="text-xs font-medium text-muted-foreground px-3 mb-2 uppercase tracking-wider">
-          Menu
+          {t("menu")}
         </p>
-        {navItems.map(({ href, icon: Icon, label }) => {
+        {navItems.map(({ href, icon: Icon, key }) => {
           const active =
             pathname === href ||
             (href !== "/dashboard" && pathname.startsWith(href));
@@ -79,7 +81,7 @@ export default function Sidebar({ userName, userEmail }: Props) {
               className={cn("sidebar-link", active && "active")}
             >
               <Icon className="w-4 h-4 shrink-0" />
-              <span className="flex-1">{label}</span>
+              <span className="flex-1">{t(key)}</span>
             </Link>
           );
         })}
@@ -95,14 +97,14 @@ export default function Sidebar({ userName, userEmail }: Props) {
           )}
         >
           <Settings className="w-4 h-4" />
-          Settings
+          {t("settings")}
         </Link>
         <button
           onClick={handleSignOut}
           className="sidebar-link w-full text-left text-destructive hover:text-destructive hover:bg-destructive/10"
         >
           <LogOut className="w-4 h-4" />
-          Sign out
+          {t("signOut")}
         </button>
       </div>
 

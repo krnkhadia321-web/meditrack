@@ -1,6 +1,7 @@
 import Groq from "groq-sdk";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getAILocale, aiLanguageInstruction } from "@/lib/aiLocale";
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,11 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    const locale = await getAILocale();
+    const hindiNote = locale === "hi"
+      ? "\n\nLANGUAGE: Write ALL human-readable text VALUES inside the JSON (purpose, dosage, duration, sideEffects, estimatedSavings, importantNote, questionsToAsk, generalAdvice, redFlags, diagnosis) in Hindi (Devanagari). Keep JSON KEYS, brand names, generic names, boolean values, and numbers in English. Do not translate keys."
+      : aiLanguageInstruction(locale);
 
     const response = await groq.chat.completions.create({
       model: "meta-llama/llama-4-scout-17b-16e-instruct",
@@ -62,7 +68,7 @@ Rules:
 - Always explain in simple Hindi-friendly English (avoid medical jargon)
 - genericAlternative must be a real Indian brand or Jan Aushadhi generic name
 - If a medicine name is unclear from OCR, make your best guess based on context
-- questionsToAsk should be practical and specific to these medicines`,
+- questionsToAsk should be practical and specific to these medicines${hindiNote}`,
         },
         {
           role: "user",

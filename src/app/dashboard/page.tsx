@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
+import { getTranslations, getLocale } from "next-intl/server";
 import {
   TrendingDown,
   TrendingUp,
@@ -156,6 +157,9 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  const locale = await getLocale();
+  const t = await getTranslations("dashboard");
+
   const [
     { data: expenses },
     { data: familyMembers },
@@ -272,15 +276,13 @@ export default async function DashboardPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Good morning, {firstName} 👋</h1>
-          <p className="page-subtitle">
-            Here's your family health spending overview
-          </p>
+          <h1 className="page-title">{t("greetingMorning", { name: firstName })}</h1>
+          <p className="page-subtitle">{t("subtitle")}</p>
         </div>
         <div className="text-sm text-muted-foreground bg-white border border-border rounded-xl px-4 py-2">
-          {new Intl.DateTimeFormat("en-IN", { dateStyle: "long" }).format(
-            new Date(),
-          )}
+          {new Intl.DateTimeFormat(locale === "hi" ? "hi-IN" : "en-IN", {
+            dateStyle: "long",
+          }).format(new Date())}
         </div>
       </div>
 
@@ -288,13 +290,15 @@ export default async function DashboardPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-center gap-3 mb-6">
           <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
           <p className="text-sm text-amber-800">
-            <strong>{renewingSoon[0].provider_name}</strong> renews in{" "}
-            {Math.ceil(
-              (new Date(renewingSoon[0].renewal_date!).getTime() -
-                now.getTime()) /
-                (1000 * 60 * 60 * 24),
-            )}{" "}
-            days.
+            {t.rich("renewalWarning", {
+              provider: renewingSoon[0].provider_name,
+              days: Math.ceil(
+                (new Date(renewingSoon[0].renewal_date!).getTime() -
+                  now.getTime()) /
+                  (1000 * 60 * 60 * 24),
+              ),
+              strong: (chunks) => <strong>{chunks}</strong>,
+            })}
           </p>
         </div>
       )}
@@ -304,7 +308,7 @@ export default async function DashboardPage() {
         <div className="stat-card animate-in">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              This Month
+              {t("statThisMonth")}
             </span>
             <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
               <Receipt className="w-4 h-4 text-primary" />
@@ -321,14 +325,14 @@ export default async function DashboardPage() {
             ) : (
               <TrendingUp className="w-3 h-3" />
             )}
-            {Math.abs(pctChange).toFixed(0)}% vs last month
+            {t("vsLastMonth", { pct: Math.abs(pctChange).toFixed(0) })}
           </div>
         </div>
 
         <div className="stat-card animate-in delay-100">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Out of Pocket
+              {t("statOutOfPocket")}
             </span>
             <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
               <TrendingDown className="w-4 h-4 text-red-500" />
@@ -338,14 +342,14 @@ export default async function DashboardPage() {
             {formatCurrency(totalOOP)}
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            {formatCurrency(totalCovered)} covered
+            {t("coveredAmount", { amount: formatCurrency(totalCovered) })}
           </div>
         </div>
 
         <div className="stat-card animate-in delay-200">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Family Members
+              {t("statFamilyMembers")}
             </span>
             <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
               <Users className="w-4 h-4 text-blue-500" />
@@ -355,14 +359,14 @@ export default async function DashboardPage() {
             {familyMembers?.length ?? 0}
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            {thisMonth.length} expenses this month
+            {t("expensesThisMonth", { count: thisMonth.length })}
           </div>
         </div>
 
         <div className="stat-card animate-in delay-300">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Insured Cover
+              {t("statInsuredCover")}
             </span>
             <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center">
               <Shield className="w-4 h-4 text-emerald-600" />
@@ -372,8 +376,7 @@ export default async function DashboardPage() {
             {formatCurrency(totalInsured)}
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            {policies?.length ?? 0} active{" "}
-            {policies?.length === 1 ? "policy" : "policies"}
+            {t("activePolicy", { count: policies?.length ?? 0 })}
           </div>
         </div>
       </div>
@@ -385,12 +388,9 @@ export default async function DashboardPage() {
             <Brain className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-sm">
-              Not sure if a procedure is worth it?
-            </h3>
+            <h3 className="font-semibold text-sm">{t("shouldITitle")}</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Get a personalised recommendation using your insurance, budget &
-              live prices
+              {t("shouldISub")}
             </p>
           </div>
         </div>
@@ -399,7 +399,7 @@ export default async function DashboardPage() {
           className="btn-primary shrink-0 flex items-center gap-2 text-sm"
         >
           <Brain className="w-4 h-4" />
-          Ask now
+          {t("askNow")}
         </a>
       </div>
 
@@ -410,9 +410,9 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
         <div className="bg-white rounded-2xl border border-border p-6">
           <div className="mb-5">
-            <h3 className="font-semibold text-sm">Monthly Spending</h3>
+            <h3 className="font-semibold text-sm">{t("monthlySpending")}</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Last 6 months — covered vs out of pocket
+              {t("monthlySpendingSub")}
             </p>
           </div>
           <SpendingChart data={monthlyData} />
@@ -420,9 +420,9 @@ export default async function DashboardPage() {
 
         <div className="bg-white rounded-2xl border border-border p-6">
           <div className="mb-5">
-            <h3 className="font-semibold text-sm">By Category</h3>
+            <h3 className="font-semibold text-sm">{t("byCategory")}</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              All-time spending breakdown
+              {t("byCategorySub")}
             </p>
           </div>
           <CategoryChart data={categoryData} />
@@ -437,9 +437,9 @@ export default async function DashboardPage() {
               <Target className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm">Annual health budgets</h3>
+              <h3 className="font-semibold text-sm">{t("annualBudgets")}</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Yearly spending vs target per member
+                {t("annualBudgetsSub")}
               </p>
             </div>
           </div>
@@ -496,14 +496,14 @@ export default async function DashboardPage() {
                     </div>
                     <div className="flex items-center justify-between mt-1.5">
                       <span className="text-xs text-muted-foreground">
-                        {pct}% used
+                        {t("budgetUsed", { pct })}
                       </span>
                       <span
                         className={`text-xs font-medium ${isOver ? "text-red-600" : isWarning ? "text-amber-600" : "text-muted-foreground"}`}
                       >
                         {isOver
-                          ? `${formatCurrency(Math.abs(remaining))} over budget`
-                          : `${formatCurrency(remaining)} remaining`}
+                          ? t("overBudget", { amount: formatCurrency(Math.abs(remaining)) })
+                          : t("budgetRemaining", { amount: formatCurrency(remaining) })}
                       </span>
                     </div>
                   </div>
@@ -517,16 +517,16 @@ export default async function DashboardPage() {
       <div className="bg-white rounded-2xl border border-border p-6">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="font-semibold text-sm">Recent expenses</h3>
+            <h3 className="font-semibold text-sm">{t("recentExpenses")}</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Latest transactions
+              {t("latestTransactions")}
             </p>
           </div>
           <a
             href="/dashboard/expenses"
             className="text-xs text-primary font-medium hover:underline"
           >
-            View all →
+            {t("viewAll")}
           </a>
         </div>
         {expenses && expenses.length > 0 ? (
@@ -545,7 +545,7 @@ export default async function DashboardPage() {
                       {expense.description}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {(expense.family_members as any)?.name ?? "Unknown"} ·{" "}
+                      {(expense.family_members as any)?.name ?? t("unknownMember")} ·{" "}
                       {expense.expense_date}
                     </div>
                   </div>
@@ -559,12 +559,12 @@ export default async function DashboardPage() {
         ) : (
           <div className="text-center py-12 text-muted-foreground">
             <Receipt className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No expenses yet. Add your first one!</p>
+            <p className="text-sm">{t("noExpenses")}</p>
             <a
               href="/dashboard/expenses"
               className="btn-primary mt-4 inline-flex"
             >
-              Add expense
+              {t("addExpense")}
             </a>
           </div>
         )}

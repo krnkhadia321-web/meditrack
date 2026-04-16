@@ -2,7 +2,7 @@
 
 Track, optimize, and reduce your family's healthcare spending in India.
 
-MediTrack is a full-stack AI-powered web app that helps Indian families take control of their medical expenses. It tracks spending across family members, compares hospital prices in real time, checks government scheme eligibility, suggests generic medicine alternatives, manages insurance policies, generates personalised diet charts, tracks vitals, sends medicine reminders, scans bills with OCR, gives pre-decision recommendations on procedures, finds Jan Aushadhi stores, and maintains digital health records — all in one place.
+MediTrack is a full-stack AI-powered web app that helps Indian families take control of their medical expenses. It tracks spending across family members, compares hospital prices in real time, checks government scheme eligibility, suggests generic medicine alternatives, manages insurance policies, generates personalised diet charts, tracks vitals, sends medicine reminders, scans bills with OCR, gives pre-decision recommendations on procedures, finds Jan Aushadhi stores, generates downloadable PDF health reports, supports Hindi language, and maintains digital health records — all in one place.
 
 🌐 **Live Demo:** [meditrack-cyan.vercel.app](https://meditrack-cyan.vercel.app)
 
@@ -122,10 +122,26 @@ Tool results render as structured cards — colour-coded per tool, with clickabl
 - Smart tips on unused deduction limits
 - One-click CSV download for CA / tax filing
 
+### 📄 PDF Health Reports
+Generate downloadable multi-page A4 reports from the Settings → Reports tab:
+- **Monthly report** — pick any month, get spending summary, category breakdown, per-member budgets, top 10 expenses, insurance, active medicines, latest vitals, and savings tips
+- **Annual FY report** — includes everything above plus full Section 80D tax deduction summary with estimated tax saved at 20%/30%
+- All sections scoped to the selected period — policies, meds, and vitals only show data relevant to that timeframe
+- Built with jsPDF + html2canvas (client-side, no server-side Chrome needed)
+- Perfect for sharing with a CA, employer, or insurer
+
+### 🇮🇳 Hindi Language Support
+- Full i18n with next-intl (cookie-based locale, no URL prefix)
+- Language switcher in Settings → Profile
+- Sidebar, Dashboard, sign-in/sign-up pages fully translated to Hindi (Devanagari script)
+- AI assistant, advisor, diet chart generator, and prescription explainer all respond in Hindi when locale is set to Hindi
+- Medical terms, hospital names, medicine names, and ₹ amounts stay in English for clarity
+
 ### ⚙️ Settings (Tabbed)
-Vertical-tab layout with five sections:
+Vertical-tab layout with six sections:
 - **Section 80D** — tax deduction calculator
-- **Profile** — edit name, city, phone
+- **Profile** — edit name, city, phone + language switcher (English / Hindi)
+- **Reports** — monthly and annual PDF health reports
 - **Privacy & Security** — RLS, encryption, AI privacy + CSV export
 - **About MediTrack** — version, stack, model, made for India
 - **Sign out** — confirmation panel before ending the session
@@ -149,6 +165,8 @@ Vertical-tab layout with five sections:
 | AI Model | Groq — Llama 4 Scout (`meta-llama/llama-4-scout-17b-16e-instruct`) |
 | Live Search | Tavily API |
 | OCR | Tesseract.js (client-side) + Groq parsing |
+| i18n | next-intl (cookie-based locale) |
+| PDF Reports | jsPDF + html2canvas (client-side A4) |
 | Deployment | Vercel |
 
 ---
@@ -179,7 +197,7 @@ meditrack/
 │   │   │   ├── insurance/             # Insurance policy tracker
 │   │   │   ├── assistant/             # AI chat interface
 │   │   │   ├── advisor/               # "Should I?" pre-decision advisor
-│   │   │   └── settings/              # Tabbed settings (80D, Profile, Privacy, About, Sign out)
+│   │   │   └── settings/              # Tabbed settings (80D, Profile, Reports, Privacy, About, Sign out)
 │   │   └── api/
 │   │       ├── chat/                  # Groq AI agent API route (6 tools)
 │   │       ├── advisor/               # Pre-decision advisor API
@@ -187,18 +205,34 @@ meditrack/
 │   │       ├── ocr/                   # OCR text → structured fields
 │   │       ├── prescription/          # Prescription explainer API
 │   │       ├── jan-aushadhi/          # Jan Aushadhi store search API
-│   │       └── health-score/          # Family health score API
+│   │       ├── health-score/          # Family health score API
+│   │       └── locale/                # Language preference cookie + profile persistence
 │   ├── components/
 │   │   ├── layout/
-│   │   │   └── Sidebar.tsx            # Navigation sidebar
-│   │   └── dashboard/
-│   │       ├── SpendingChart.tsx      # Monthly bar chart
-│   │       ├── CategoryChart.tsx      # Category donut chart
-│   │       └── TaxCalculator.tsx      # Section 80D calculator
+│   │   │   └── Sidebar.tsx            # Navigation sidebar (i18n-aware)
+│   │   ├── dashboard/
+│   │   │   ├── SpendingChart.tsx      # Monthly bar chart
+│   │   │   ├── CategoryChart.tsx      # Category donut chart
+│   │   │   └── TaxCalculator.tsx      # Section 80D calculator (shared logic)
+│   │   ├── reports/
+│   │   │   ├── ReportsPanel.tsx       # Month/FY picker + PDF generation UI
+│   │   │   └── ReportTemplate.tsx     # Hidden A4 template (5 pages)
+│   │   └── settings/
+│   │       └── LanguageSwitcher.tsx   # English / Hindi toggle
+│   ├── i18n/
+│   │   ├── config.ts                  # Supported locales, labels, helpers
+│   │   ├── request.ts                 # next-intl request config (cookie-based)
+│   │   └── messages/
+│   │       ├── en.json                # English strings
+│   │       └── hi.json                # Hindi strings
 │   ├── lib/
 │   │   ├── supabase/
 │   │   │   ├── client.ts              # Browser Supabase client
 │   │   │   └── server.ts              # Server Supabase client (async)
+│   │   ├── reports/
+│   │   │   ├── aggregate.ts           # Report data aggregation + shared 80D logic
+│   │   │   └── generatePdf.ts         # html2canvas → jsPDF multi-page A4
+│   │   ├── aiLocale.ts                # Reads locale cookie, generates AI language instruction
 │   │   ├── tools.ts                   # 6 AI tool definitions + execution
 │   │   └── utils.ts                   # Utility functions
 │   ├── types/
@@ -364,7 +398,9 @@ Open [http://localhost:3000](http://localhost:3000)
     - "Find MRI scan price in Delhi"
     - "Log ₹800 medicine expense from MedPlus today"
 13. **Check tax deductions** — Settings → Section 80D → auto-computed from your insurance and expense data. Download CSV for your CA.
-14. **Export your data** — Settings → Privacy & Security → Export as CSV → all expenses, family members, and insurance policies.
+14. **Download a PDF report** — Settings → Reports → pick Monthly or Annual FY → Generate & download. Includes spending, insurance, 80D (annual), medicines, vitals, and savings tips.
+15. **Switch to Hindi** — Settings → Profile → Language card → click हिन्दी. Sidebar, dashboard, auth pages, and AI responses switch to Hindi instantly.
+16. **Export your data** — Settings → Privacy & Security → Export as CSV → all expenses, family members, and insurance policies.
 
 ---
 
@@ -430,9 +466,7 @@ In Supabase, add your Vercel URL:
 ## 🗺️ Roadmap
 
 - Crowdsourced hospital price database
-- Freemium Pro plan (₹99/month)
-- Hindi language support
-- PDF monthly health report
+- Freemium Pro plan (₹99/month) via Razorpay
 - WhatsApp bot for Tier 2/3 cities
 - ABHA integration (India's national health ID)
 - B2B corporate wellness dashboard

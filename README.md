@@ -2,7 +2,7 @@
 
 Track, optimize, and reduce your family's healthcare spending in India.
 
-MediTrack is a full-stack AI-powered web app that helps Indian families take control of their medical expenses. It tracks spending across family members, compares hospital prices in real time, checks government scheme eligibility, suggests generic medicine alternatives, manages insurance policies, generates personalised diet charts, tracks vitals, sends medicine reminders, scans bills with OCR, gives pre-decision recommendations on procedures, finds Jan Aushadhi stores, generates downloadable PDF health reports, supports Hindi language, and maintains digital health records — all in one place.
+MediTrack is a full-stack AI-powered web app that helps Indian families take control of their medical expenses. It tracks spending across family members, compares hospital prices in real time, checks government scheme eligibility, suggests generic medicine alternatives, manages insurance policies, generates personalised diet charts, tracks vitals, sends medicine reminders, scans bills with OCR, gives pre-decision recommendations on procedures, finds Jan Aushadhi stores, generates downloadable PDF health reports, supports Hindi language, shows crowdsourced hospital price intelligence from real user reports, and maintains digital health records — all in one place.
 
 🌐 **Live Demo:** [meditrack-cyan.vercel.app](https://meditrack-cyan.vercel.app)
 
@@ -100,8 +100,19 @@ Get a personalised recommendation **before** spending on a procedure. The adviso
 - Pulls your active insurance and remaining cover
 - Pulls your monthly spend so far for budget context
 - Runs three live Tavily searches: market prices, named affordable hospitals in your city, and government/PMJAY options
+- Taps into MediTrack's crowdsourced price intelligence — real prices other users paid at the same hospitals (prioritised over article search snippets)
 - Returns a verdict (Good to Proceed / Caution / Consider Alternatives) with 4–5 ranked hospital options in your city
 - Falls back to nearby cities by distance (NCR, MMR, Bangalore-Mysore corridor, etc.) if same-city options are thin
+
+### 📊 Crowdsourced Price Intelligence
+A network-effect feature that turns every logged expense into market intelligence:
+- Dedicated `/dashboard/prices` page — search any hospital or category, filter by city
+- Aggregates anonymised expense data across users (hospital + category + city)
+- Shows real price ranges (min, median, max) with sample count per hospital
+- **Privacy-first**: only aggregated data from 3+ users ever shown, no individual records exposed
+- Each card visualises the price range on a gradient bar with a median marker
+- Feeds directly into the "Should I?" advisor so every question gets smarter as more users log expenses
+- Implemented via a Postgres `security definer` function so cross-user aggregation respects RLS boundaries
 
 ### 🤖 AI Assistant (6 tools)
 Powered by Groq (Llama 4 Scout), the assistant can:
@@ -197,6 +208,7 @@ meditrack/
 │   │   │   ├── insurance/             # Insurance policy tracker
 │   │   │   ├── assistant/             # AI chat interface
 │   │   │   ├── advisor/               # "Should I?" pre-decision advisor
+│   │   │   ├── prices/                # Crowdsourced price intelligence page
 │   │   │   └── settings/              # Tabbed settings (80D, Profile, Reports, Privacy, About, Sign out)
 │   │   └── api/
 │   │       ├── chat/                  # Groq AI agent API route (6 tools)
@@ -206,6 +218,7 @@ meditrack/
 │   │       ├── prescription/          # Prescription explainer API
 │   │       ├── jan-aushadhi/          # Jan Aushadhi store search API
 │   │       ├── health-score/          # Family health score API
+│   │       ├── prices/                # Price intelligence aggregation API
 │   │       └── locale/                # Language preference cookie + profile persistence
 │   ├── components/
 │   │   ├── layout/
@@ -342,6 +355,52 @@ alter table public.family_members
   add column annual_budget numeric(12,2) default null;
 ```
 
+**Price Intelligence function** (aggregates expenses across users with a minimum 3-report privacy threshold):
+```sql
+create or replace function public.get_price_intelligence(
+  p_city text default null,
+  p_category text default null,
+  p_search text default null
+)
+returns table (
+  hospital text,
+  category text,
+  category_icon text,
+  sample_count bigint,
+  min_price numeric,
+  max_price numeric,
+  median_price numeric,
+  avg_price numeric,
+  last_reported date
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    initcap(trim(e.hospital_name)) as hospital,
+    c.name as category,
+    c.icon as category_icon,
+    count(*)::bigint as sample_count,
+    min(e.amount) as min_price,
+    max(e.amount) as max_price,
+    percentile_cont(0.5) within group (order by e.amount) as median_price,
+    round(avg(e.amount), 0) as avg_price,
+    max(e.expense_date) as last_reported
+  from expenses e
+  join profiles p on p.id = e.user_id
+  join expense_categories c on c.id = e.category_id
+  where e.hospital_name is not null
+    and trim(e.hospital_name) != ''
+    and (p_city is null or lower(p.city) = lower(p_city))
+    and (p_category is null or lower(c.name) = lower(p_category))
+    and (p_search is null or lower(e.hospital_name) like '%' || lower(p_search) || '%')
+  group by initcap(trim(e.hospital_name)), c.name, c.icon
+  having count(*) >= 3
+  order by count(*) desc, avg(e.amount) asc
+$$;
+```
+
 ### Step 4 — Get your API keys
 
 **Supabase keys:** Dashboard → Settings → API → copy Project URL and anon public key
@@ -400,7 +459,8 @@ Open [http://localhost:3000](http://localhost:3000)
 13. **Check tax deductions** — Settings → Section 80D → auto-computed from your insurance and expense data. Download CSV for your CA.
 14. **Download a PDF report** — Settings → Reports → pick Monthly or Annual FY → Generate & download. Includes spending, insurance, 80D (annual), medicines, vitals, and savings tips.
 15. **Switch to Hindi** — Settings → Profile → Language card → click हिन्दी. Sidebar, dashboard, auth pages, and AI responses switch to Hindi instantly.
-16. **Export your data** — Settings → Privacy & Security → Export as CSV → all expenses, family members, and insurance policies.
+16. **Check crowdsourced prices** — Price Intelligence → search any hospital or filter by category → see real price ranges paid by other MediTrack users (only shown once 3+ reports exist).
+17. **Export your data** — Settings → Privacy & Security → Export as CSV → all expenses, family members, and insurance policies.
 
 ---
 
@@ -465,7 +525,6 @@ In Supabase, add your Vercel URL:
 
 ## 🗺️ Roadmap
 
-- Crowdsourced hospital price database
 - Freemium Pro plan (₹99/month) via Razorpay
 - WhatsApp bot for Tier 2/3 cities
 - ABHA integration (India's national health ID)

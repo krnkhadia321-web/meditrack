@@ -81,7 +81,8 @@ async function runAdvisorTool(
 ): Promise<string> {
   const { procedure, quoted_price, quoted_hospital, city, member_name } = input
   const price = quoted_price ? Number(quoted_price) : null
-  const searchCity = city ?? userCity ?? 'India'
+  // Groq sometimes passes empty strings — treat those as missing and fall back to profile city.
+  const searchCity = (typeof city === 'string' && city.trim()) || userCity || 'India'
 
   // 1. Fetch user's insurance
   const supabase = await createClient()
@@ -209,6 +210,23 @@ try {
     govOptions = 'Check PMJAY empanelled hospitals for subsidised rates.'
   }
 
+  // 7. MediTrack crowdsourced data — real prices reported by verified users
+  let crowdsourcedData = ''
+  try {
+    const { data: prices } = await supabase.rpc('get_price_intelligence', {
+      p_city: searchCity,
+      p_category: null,
+      // Only narrow by hospital name if the user quoted a specific hospital.
+      // Otherwise return all hospitals in the city so the model can pick relevant ones.
+      p_search: quoted_hospital || null,
+    })
+    if (prices && prices.length > 0) {
+      crowdsourcedData = prices.slice(0, 8).map((p: any) =>
+        `• ${p.hospital} (${p.category}): ₹${Number(p.min_price).toLocaleString('en-IN')}–₹${Number(p.max_price).toLocaleString('en-IN')} · median ₹${Number(p.median_price).toLocaleString('en-IN')} · based on ${p.sample_count} real reports`
+      ).join('\n')
+    }
+  } catch {}
+
   // Build structured response
   const insuranceSummary = policies && policies.length > 0
     ? policies.map(p => `${p.provider_name} (${p.plan_name ?? 'Policy'}): ₹${Number(p.sum_insured).toLocaleString('en-IN')} cover`).join(', ')
@@ -223,6 +241,10 @@ INSURANCE:
 ${insuranceSummary}
 
 THIS MONTH'S SPENDING: ₹${monthTotal.toLocaleString('en-IN')}
+
+MEDITRACK USER REPORTS:
+Real prices reported by verified MediTrack users in ${searchCity}. These are the most trustworthy data points — prefer these over article search snippets when they exist.
+${crowdsourcedData || 'Not enough crowdsourced data yet for this procedure in this city.'}
 
 LIVE MARKET PRICES:
 ${priceData}

@@ -18,6 +18,7 @@ import {
   Pill,
   Activity,
   Brain,
+  BarChart3,
 } from "lucide-react";
 
 const navItems = [
@@ -30,6 +31,7 @@ const navItems = [
   { href: "/dashboard/insurance", icon: Shield, key: "insurance" as const },
   { href: "/dashboard/assistant", icon: Bot, key: "assistant" as const },
   { href: "/dashboard/advisor", icon: Brain, key: "advisor" as const },
+  { href: "/dashboard/prices", icon: BarChart3, key: "prices" as const },
   { href: "/dashboard/health-score", icon: Heart, key: "healthScore" as const },
 ];
 
